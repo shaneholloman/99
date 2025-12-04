@@ -1,8 +1,8 @@
 -- luacheck: globals describe it assert
 local _99 = require("99")
 local test_utils = require("99.test.test_utils")
-local M = {}
 local eq = assert.are.same
+local test_content = require("99.test.test_content")
 
 --- @param content string[]
 --- @return _99.Provider, number
@@ -24,7 +24,7 @@ end
 
 describe("fill_in_function", function()
     it("should fill in function that multiple lines", function()
-        local p, buffer = setup(M.empty_function_2_lines)
+        local p, buffer = setup(test_content.empty_function_2_lines)
         _99.fill_in_function()
 
         local expected_state = {
@@ -39,16 +39,3 @@ describe("fill_in_function", function()
         eq(expected_state, r(buffer))
     end)
 end)
-
-M.empty_function_2_lines = {
-    "",
-    "function foo()",
-    "end",
-    "",
-}
-
-M.empty_function_single_line = {
-    "",
-    "function foo() end",
-    "",
-}

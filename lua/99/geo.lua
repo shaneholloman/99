@@ -72,6 +72,13 @@ function Point:from_cursor()
     return point
 end
 
+--- @param ns_id string
+---@param buffer number
+---@param mark_id string
+function Point:from_extmark(ns_id, buffer, mark_id)
+    local row, col = vim.api.nvim_buf_get_extmark_by_id(buffer, ns_id, mark_id)
+end
+
 --- @param row number
 ---@param col number
 --- @return Point

@@ -7,13 +7,13 @@ M.created_files = {}
 --- @field context _99.Context
 --- @field observer _99.ProviderObserver?
 
---- @class _99.test.Provider
+--- @class _99.test.Provider : _99.Provider
 --- @field request _99.test.ProviderRequest?
 local TestProvider = {}
 TestProvider.__index = TestProvider
 
 function TestProvider.new()
-    return setmetatable({})
+    return setmetatable({}, TestProvider)
 end
 
 --- @param query string
@@ -70,12 +70,14 @@ end
 ---@param row number?
 ---@param col number?
 function M.create_file(contents, file_type, row, col)
+    assert(type(contents) == "table", "contents must be a table of strings")
     file_type = file_type or "lua"
     local bufnr = vim.api.nvim_create_buf(false, false)
 
     vim.api.nvim_set_current_buf(bufnr)
     vim.bo[bufnr].ft = file_type
     vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, contents)
+    print("row", row or 1, "col", col or 0)
     vim.api.nvim_win_set_cursor(0, { row or 1, col or 0 })
 
     table.insert(M.created_files, bufnr)
