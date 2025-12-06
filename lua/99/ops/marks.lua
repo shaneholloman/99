@@ -43,6 +43,7 @@ function Mark:set_virtual_text(lines)
         vim.api.nvim_buf_get_extmark_by_id(self.buffer, nsid, self.id, {})
     assert(#pos > 0, "extmark is broken.  it does not exist")
     local row, col = pos[1], pos[2]
+    Logger:warn("set_virt", "pos", pos)
 
     for _, line in ipairs(lines) do
         table.insert(self.lines, line)

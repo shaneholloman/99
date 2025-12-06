@@ -43,7 +43,7 @@ function create_mark()
     local Logger = require("99.logger.logger")
     local Level = require("99.logger.level")
     Logger:configure({
-        level = Level.FATAL,
+        level = Level.WARN,
         path = nil,
     })
     local buffer = vim.api.nvim_get_current_buf()
