@@ -1,18 +1,16 @@
-local Range = require("99.geo").Range
-
 --- @class _99.Location
 --- @field full_path string
---- @field range Range
---- @field node TSNode
+--- @field range _99.Range
+--- @field node _99.treesitter.Node
 --- @field buffer number
 --- @field file_type string
---- @field marks table<string, string>
+--- @field marks table<string, _99.Mark>
 --- @field ns_id string
 local Location = {}
 Location.__index = Location
 
---- @param node TSNode
---- @param range Range
+--- @param node _99.treesitter.Node
+--- @param range _99.Range
 function Location.from_ts_node(node, range)
     local full_path = vim.api.nvim_buf_get_name(range.buffer)
     local file_type = vim.bo[range.buffer].ft
@@ -28,6 +26,12 @@ function Location.from_ts_node(node, range)
         marks = {},
         ns_id = ns_id,
     }, Location)
+end
+
+function Location:clear_marks()
+    for _, mark in pairs(self.marks) do
+        mark:delete()
+    end
 end
 
 return Location

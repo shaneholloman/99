@@ -1,12 +1,10 @@
 local geo = require("99.geo")
-local Range = geo.Range
 local Point = geo.Point
 local Logger = require("99.logger.logger")
 local Request = require("99.request")
-local marks = require("99.ops.marks")
+local Mark = require("99.ops.marks")
 local Context = require("99.ops.context")
 local editor = require("99.editor")
-local Languages = require("99.language")
 
 --- @param res string
 --- @param location _99.Location
@@ -62,33 +60,23 @@ end
 --- @param _99 _99.State
 local function fill_in_function(_99)
     local ts = editor.treesitter
+    local buffer = vim.api.nvim_get_current_buf()
     local cursor = Point:from_cursor()
-    local scopes = ts.function_scopes(cursor)
-    local scope = scopes:get_inner_scope()
-    local range = scopes:get_inner_range()
+    local func = ts.containing_function(buffer, cursor)
 
-    if not range or not scope then
-        Logger:error("fill_in_function: unable to find any containing function")
-        error("you cannot call fill_in_function not in a function")
+    if not func then
+        Logger:fatal("fill_in_function: unable to find any containing function")
+        return
     end
 
-    local location = editor.Location.from_ts_node(scope, range)
-    local ai_input_row = Languages.add_function_spacing(_99, location)
-    if ai_input_row == -1 then
-        Logger:warn("fill_in_function: add_function_spacing returned -1")
-    else
-        local buffer = location.buffer
-        local mark = marks(
-            buffer,
-            Range:new(
-                buffer,
-                Point:new(ai_input_row, 1),
-                Point:new(ai_input_row, 1)
-            )
-        )
+    local location =
+        editor.Location.from_ts_node(func.function_node, func.function_range)
+    local virt_line_count = _99.ai_stdout_rows
+    if virt_line_count >= 0 then
+        location.marks.function_location = Mark.mark_func_body(buffer, func)
+            :set_max_virt_lines(virt_line_count)
     end
 
-    -- location.marks.virtual_text_start = marks(buffer,
     local context = Context.new(_99):finalize(_99, location)
     local request = Request.new({
         provider = _99.provider_override,
@@ -97,12 +85,17 @@ local function fill_in_function(_99)
     })
 
     context:add_to_request(request)
-    location.marks.function_location = marks(location.buffer, range)
     request:add_prompt_content(_99.prompts.prompts.fill_in_function)
 
     request:start({
-        on_stdout = function(line) end,
+        on_stdout = function(line)
+            local mark = location.marks.function_location
+            if mark then
+                mark:set_virtual_text({ line })
+            end
+        end,
         on_complete = function(ok, response)
+            location:clear_marks()
             if not ok then
                 Logger:fatal(
                     "unable to fill in function, enable and check logger for more details"
@@ -110,8 +103,7 @@ local function fill_in_function(_99)
             end
             update_file_with_changes(response, location)
         end,
-        on_stderr = function(line)
-        end,
+        on_stderr = function(line) end,
     })
 end
 

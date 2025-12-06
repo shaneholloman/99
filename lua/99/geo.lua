@@ -1,6 +1,6 @@
 local project_row = 100000000
 
---- @param point_or_row Point | number
+--- @param point_or_row _99.Point | number
 --- @param col number | nil
 --- @return number
 local function project(point_or_row, col)
@@ -11,7 +11,7 @@ local function project(point_or_row, col)
 end
 
 --- stores all values as 1 based
---- @class Point
+--- @class _99.Point
 --- @field row number
 --- @field col number
 local Point = {}
@@ -49,7 +49,7 @@ end
 --- 1 based point
 --- @param row number
 --- @param col number
---- @return Point
+--- @return _99.Point
 function Point:new(row, col)
     assert(type(row) == "number", "expected row to be a number")
     assert(type(col) == "number", "expected col to be a number")
@@ -65,6 +65,7 @@ function Point:from_cursor()
         col = 0,
     }, self)
 
+    --- NOTE: win_get_cursor 1, 0 based return
     local cursor = vim.api.nvim_win_get_cursor(0)
     local cursor_row, cursor_col = cursor[1], cursor[2]
     point.row = cursor_row
@@ -75,13 +76,18 @@ end
 --- @param ns_id string
 ---@param buffer number
 ---@param mark_id string
-function Point:from_extmark(ns_id, buffer, mark_id)
+function Point.from_extmark(ns_id, buffer, mark_id)
+    --- NOTE: get_extmark_by_id returns 0 based
     local row, col = vim.api.nvim_buf_get_extmark_by_id(buffer, ns_id, mark_id)
+    return setmetatable({
+        row = row + 1,
+        col = col + 1,
+    }, Point)
 end
 
 --- @param row number
 ---@param col number
---- @return Point
+--- @return _99.Point
 function Point:from_ts_point(row, col)
     return setmetatable({
         row = row + 1,
@@ -90,7 +96,7 @@ function Point:from_ts_point(row, col)
 end
 
 --- stores all 2 points
---- @param range Range
+--- @param range _99.Range
 --- @return boolean
 function Point:in_ts_range(range)
     return range:contains(self)
@@ -123,46 +129,46 @@ function Point:to_ts()
     return self.row - 1, self.col - 1
 end
 
---- @param point Point
+--- @param point _99.Point
 --- @return boolean
 function Point:gt(point)
     return project(self) > project(point)
 end
 
---- @param point Point
+--- @param point _99.Point
 --- @return boolean
 function Point:lt(point)
     return project(self) < project(point)
 end
 
---- @param point Point
+--- @param point _99.Point
 --- @return boolean
 function Point:lte(point)
     return project(self) <= project(point)
 end
 
---- @param point Point
+--- @param point _99.Point
 --- @return boolean
 function Point:gte(point)
     return project(self) >= project(point)
 end
 
---- @param point Point
+--- @param point _99.Point
 --- @return boolean
 function Point:eq(point)
     return project(self) == project(point)
 end
 
---- @class Range
---- @field start Point
---- @field end_ Point
+--- @class _99.Range
+--- @field start _99.Point
+--- @field end_ _99.Point
 --- @field buffer number
 local Range = {}
 Range.__index = Range
 
 ---@param buffer number
---- @param start Point
----@param end_ Point
+--- @param start _99.Point
+---@param end_ _99.Point
 function Range:new(buffer, start, end_)
     return setmetatable({
         start = start,
@@ -171,9 +177,9 @@ function Range:new(buffer, start, end_)
     }, self)
 end
 
----@param node TSNode
+---@param node _99.treesitter.TSNode
 ---@param buffer number
----@return Range
+---@return _99.Range
 function Range:from_ts_node(node, buffer)
     -- ts is zero based
     local start_row, start_col, _ = node:start()
@@ -187,7 +193,7 @@ function Range:from_ts_node(node, buffer)
     return setmetatable(range, self)
 end
 
---- @param point Point
+--- @param point _99.Point
 --- @return boolean
 function Range:contains(point)
     local start = project(self.start)
@@ -212,7 +218,7 @@ function Range:to_text()
     return table.concat(text, "\n")
 end
 
---- @param range Range
+--- @param range _99.Range
 --- @return boolean
 function Range:contains_range(range)
     return self.start:lte(range.start) and self.end_:gte(range.end_)

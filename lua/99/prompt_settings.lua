@@ -31,7 +31,7 @@ local prompt_settings = {
         )
     end,
 
-    --- @param range Range
+    --- @param range _99.Range
     get_range_text = function(range)
         return string.format("<FunctionText>%s</FunctionText>", range:to_text())
     end,

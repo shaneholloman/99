@@ -27,13 +27,6 @@ end
 --- @return number
 function M.add_function_spacing(_99, location)
     local lang = M.languages[location.file_type]
-    print(
-        "language",
-        "file_type",
-        vim.inspect(location.file_type),
-        "lang",
-        vim.inspect(lang)
-    )
     if not lang then
         Logger:fatal("langauge currently not supported", "lang", lang)
     end

@@ -16,7 +16,7 @@ local logger = require("99.logger.logger")
 --- @field range LspRange
 --- @field uri string
 
---- @param node TSNode
+--- @param node _99.treesitter.Node
 local function ts_node_to_lsp_position(node)
     local start_row, start_col, _, _ = node:range() -- Treesitter node range
     return { line = start_row, character = start_col }
@@ -52,7 +52,7 @@ function Lsp:new(config)
 end
 
 --- @param buffer number
---- @param node TSNode[]
+--- @param node _99.treesitter.Node[]
 --- @param cb fun(res: LspDefinitionResult | nil): nil
 function Lsp:get_ts_node_definition(buffer, node, cb)
     local range = ts_node_to_lsp_position(node)
@@ -94,7 +94,7 @@ function Lsp:_filter_flatten(resultsList, buffer)
 end
 
 --- @param buffer number
---- @param nodes TSNode[]
+--- @param nodes _99.treesitter.Node[]
 --- @param cb fun(res: LspDefinitionResult[]): nil
 function Lsp:batch_get_ts_node_definitions(buffer, nodes, cb)
     if #nodes == 0 then

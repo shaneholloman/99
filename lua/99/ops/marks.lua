@@ -1,18 +1,72 @@
-local marks_to_use = "yuiophjklnm"
-local mark_index = 0
+local Logger = require("99.logger.logger")
+
+local nsid = vim.api.nvim_create_namespace("99.marks")
+
+--- @class _99.Mark.Text
+--- @field text string
+--- @field hlgroup string
+
+--- @class _99.Mark
+--- @field id any -- whatever extmark returns
+--- @field buffer number
+--- @field max_lines number
+--- @field lines string[]
+local Mark = {}
+Mark.__index = Mark
 
 --- @param buffer number
----@param range Range
----@return string
-local function mark_function(buffer, range)
-    local start_row, start_col = range.start:to_vim()
-    local idx = (mark_index + 1) % #marks_to_use
-    local mark = marks_to_use:sub(idx, idx)
+--- @param func _99.treesitter.Function
+function Mark.mark_func_body(buffer, func)
+    local start = func.function_range.start
+    local line, col = start:to_vim()
+    local id = vim.api.nvim_buf_set_extmark(buffer, nsid, line, col, {})
 
-    vim.api.nvim_buf_set_mark(buffer, mark, start_row + 1, start_col, {})
-
-    mark_index = idx
-    return mark
+    Logger:debug("mark_func_body", "function_range", func.function_range:to_string(), "function_range#start", func.function_range.start:to_string())
+    return setmetatable({
+        id = id,
+        buffer = buffer,
+        max_lines = 1,
+        lines = {},
+    }, Mark)
 end
 
-return mark_function
+--- @param count number
+--- @return _99.Mark
+function Mark:set_max_virt_lines(count)
+    self.max_lines = count
+    return self
+end
+
+--- @param lines string[]
+function Mark:set_virtual_text(lines)
+    local pos =
+        vim.api.nvim_buf_get_extmark_by_id(self.buffer, nsid, self.id, {})
+    assert(#pos > 0, "extmark is broken.  it does not exist")
+    local row, col = pos[1], pos[2]
+
+    for _, line in ipairs(lines) do
+        table.insert(self.lines, line)
+        if #self.lines > self.max_lines then
+            table.remove(self.lines, 1)
+        end
+    end
+
+    local formatted_lines = {}
+    for _, line in ipairs(self.lines) do
+        table.insert(formatted_lines, {
+            { line, "Comment" },
+        })
+    end
+
+
+    vim.api.nvim_buf_set_extmark(self.buffer, nsid, row, col, {
+        id = self.id,
+        virt_lines = formatted_lines,
+    })
+end
+
+function Mark:delete()
+    vim.api.nvim_buf_del_extmark(self.buffer, nsid, self.id)
+end
+
+return Mark

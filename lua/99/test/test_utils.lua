@@ -43,7 +43,6 @@ function TestProvider:resolve(success, result)
     assert(self.request, "you cannot call resolve until make_request is called")
     local obs = self.request.observer
     if obs then
-        print("complete callback", vim.inspect(obs))
         obs.on_complete(success, result)
     end
     self.request = nil
@@ -88,7 +87,6 @@ function M.create_file(contents, file_type, row, col)
     vim.api.nvim_set_current_buf(bufnr)
     vim.bo[bufnr].ft = file_type
     vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, contents)
-    print("row", row or 1, "col", col or 0)
     vim.api.nvim_win_set_cursor(0, { row or 1, col or 0 })
 
     table.insert(M.created_files, bufnr)
