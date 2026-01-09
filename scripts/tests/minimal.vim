@@ -44,9 +44,9 @@ if #to_install > 0 then
 
   -- Only attempt installation if nvim-treesitter provided the command.
   if vim.fn.exists(":TSInstallSync") == 2 then
-  -- make "TSInstall*" available
-  vim.cmd("runtime! plugin/nvim-treesitter.vim")
-  vim.cmd("TSInstallSync " .. table.concat(to_install, " "))
+      -- make "TSInstall*" available
+      vim.cmd("runtime! plugin/nvim-treesitter.vim")
+      vim.cmd("TSInstallSync " .. table.concat(to_install, " "))
   end
 
   local still_missing = missing_parsers(required_parsers)
