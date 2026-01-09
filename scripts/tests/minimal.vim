@@ -21,7 +21,8 @@ runtime! plugin/plenary.vim
 runtime! plugin/nvim-treesitter.lua
 
 lua <<EOF
-local required_parsers = { "lua", "typescript", "go"}
+-- so far, only lua and typescript parser are used in the test
+local required_parsers = { "lua", "typescript" }
 
 local function missing_parsers(parsers)
   local missing = {}
@@ -43,18 +44,16 @@ if #to_install > 0 then
 
   -- Only attempt installation if nvim-treesitter provided the command.
   if vim.fn.exists(":TSInstallSync") == 2 then
-    -- make "TSInstall*" available
-    vim.cmd("runtime! plugin/nvim-treesitter.vim")
-    vim.cmd("TSInstallSync " .. table.concat(to_install, " "))
-  end
+  -- make "TSInstall*" available
+  vim.cmd("runtime! plugin/nvim-treesitter.vim")
+  vim.cmd("TSInstallSync " .. table.concat(to_install, " "))
+end
 
-  -- Re-check and fail fast with a helpful message.
   local still_missing = missing_parsers(required_parsers)
   if #still_missing > 0 then
     error(
       "Missing Tree-sitter parsers: "
         .. table.concat(still_missing, ", ")
-        .. "\nInstall them via :TSInstallSync <langs> or ensure nvim-treesitter is on runtimepath."
     )
   end
 end
