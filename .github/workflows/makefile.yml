@@ -12,9 +12,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      NVIM_VERSION: v0.10.3
+      NVIM_VERSION: v0.11.5
       NVIM_TREESITTER_SHA: 2ba5ec184609a96b513bf4c53a20512d64e27f39
-      TREE_SITTER_CLI_VERSION: 0.22.6
       XDG_DATA_HOME: ${{ github.workspace }}/.xdg/data
       XDG_CACHE_HOME: ${{ github.workspace }}/.xdg/cache
 
@@ -23,9 +22,9 @@ jobs:
 
     - name: Install Neovim
       run: |
-        wget -q https://github.com/neovim/neovim/releases/download/${NVIM_VERSION}/nvim-linux64.tar.gz
-        tar xzf nvim-linux64.tar.gz
-        sudo mv nvim-linux64 /opt/nvim
+        wget -q https://github.com/neovim/neovim/releases/download/${NVIM_VERSION}/nvim-linux-x86_64.tar.gz
+        tar xzf nvim-linux-x86_64.tar.gz
+        sudo mv nvim-linux-x86_64 /opt/nvim
         sudo ln -s /opt/nvim/bin/nvim /usr/local/bin/nvim
 
     - name: Install luarocks
@@ -47,13 +46,13 @@ jobs:
       uses: actions/cache@v4
       with:
         path: .xdg
-        key: ${{ runner.os }}-nvim-${{ env.NVIM_VERSION }}-ts-${{ env.NVIM_TREESITTER_SHA }}-tscli-${{ env.TREE_SITTER_CLI_VERSION }}
+        key: ${{ runner.os }}-nvim-${{ env.NVIM_VERSION }}-ts-${{ env.NVIM_TREESITTER_SHA }}
 
     - name: Install tree-sitter CLI
       run: |
         node --version
         npm --version
-        sudo npm install -g tree-sitter-cli@${TREE_SITTER_CLI_VERSION}
+        sudo npm install -g tree-sitter-cli
         tree-sitter --version
 
     - name: Install plenary.nvim
