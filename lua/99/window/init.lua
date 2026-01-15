@@ -257,9 +257,12 @@ local function set_defaul_win_options(win, name)
   vim.bo[win.buf_id].swapfile = false
 end
 
---- @param cb fun(success: boolean, result: string): nil
---- @param opts {}
-function M.capture_input(cb, opts)
+--- @class _99.window.CaptureInputOpts
+--- @field cb fun(success: boolean, result: string): nil
+--- @field on_load? fun(): nil
+
+--- @param opts _99.window.CaptureInputOpts
+function M.capture_input(opts)
   _ = opts
   M.clear_active_popups()
 
@@ -299,7 +302,7 @@ function M.capture_input(cb, opts)
       local lines = vim.api.nvim_buf_get_lines(win.buf_id, 0, -1, false)
       local result = table.concat(lines, "\n")
       M.clear_active_popups()
-      cb(true, result)
+      opts.cb(true, result)
     end,
   })
 
@@ -322,14 +325,18 @@ function M.capture_input(cb, opts)
         return
       end
       M.clear_active_popups()
-      cb(false, "")
+      opts.cb(false, "")
     end,
   })
 
   vim.keymap.set("n", "q", function()
     M.clear_active_popups()
-    cb(false, "")
+    opts.cb(false, "")
   end, { buffer = win.buf_id, nowait = true })
+
+  if opts.on_load then
+    vim.schedule(opts.on_load)
+  end
 end
 
 function M.clear_active_popups()

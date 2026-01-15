@@ -6,6 +6,7 @@ local Window = require("99.window")
 local get_id = require("99.id")
 local RequestContext = require("99.request-context")
 local Range = require("99.geo").Range
+local Extensions = require("99.extensions")
 
 --- @alias _99.Cleanup fun(): nil
 
@@ -34,6 +35,10 @@ local function create_99_state()
   }
 end
 
+--- @class _99.Completion
+--- @field source "cmp" | nil
+--- @field custom_rules string[] | nil
+
 --- @class _99.Options
 --- @field logger _99.Logger.Options?
 --- @field model string?
@@ -41,14 +46,14 @@ end
 --- @field provider _99.Provider?
 --- @field debug_log_prefix string?
 --- @field display_errors? boolean
---- @field custom_rules? string[]
+--- @field completion _99.Completion?
 
 --- unanswered question -- will i need to queue messages one at a time or
 --- just send them all...  So to prepare ill be sending around this state object
 --- @class _99.State
+--- @field completion _99.Completion
 --- @field model string
 --- @field md_files string[]
---- @field custom_rules string[]
 --- @field prompts _99.Prompts
 --- @field ai_stdout_rows number
 --- @field languages string[]
@@ -146,19 +151,25 @@ end
 
 function _99.fill_in_function_prompt()
   local context = get_context("fill-in-function-with-prompt")
+
   context.logger:debug("start")
-  Window.capture_input(function(success, response)
-    context.logger:debug(
-      "capture_prompt",
-      "success",
-      success,
-      "response",
-      response
-    )
-    if success then
-      ops.fill_in_function(context, response)
-    end
-  end, {})
+  Window.capture_input({
+    cb = function(success, response)
+      context.logger:debug(
+        "capture_prompt",
+        "success",
+        success,
+        "response",
+        response
+      )
+      if success then
+        ops.fill_in_function(context, response)
+      end
+    end,
+    on_load = function()
+      Extensions.setup_buffer(_99_state)
+    end,
+  })
 end
 
 function _99.fill_in_function()
@@ -168,18 +179,23 @@ end
 function _99.visual_prompt()
   local context = get_context("over-range-with-prompt")
   context.logger:debug("start")
-  Window.capture_input(function(success, response)
-    context.logger:debug(
-      "capture_prompt",
-      "success",
-      success,
-      "response",
-      response
-    )
-    if success then
-      _99.visual(response)
-    end
-  end, {})
+  Window.capture_input({
+    cb = function(success, response)
+      context.logger:debug(
+        "capture_prompt",
+        "success",
+        success,
+        "response",
+        response
+      )
+      if success then
+        _99.visual(response)
+      end
+    end,
+    on_load = function()
+      Extensions.setup_buffer(_99_state)
+    end,
+  })
 end
 
 --- @param prompt string?
@@ -250,7 +266,11 @@ function _99.setup(opts)
   opts = opts or {}
   _99_state = _99_State.new()
   _99_state.provider_override = opts.provider
-  _99_state.custom_rules = opts.custom_rules or {}
+  _99_state.completion = opts.completion
+    or {
+      source = nil,
+      custom_rules = {},
+    }
 
   vim.api.nvim_create_autocmd("VimLeavePre", {
     callback = function()
@@ -275,6 +295,7 @@ function _99.setup(opts)
   _99_state.display_errors = opts.display_errors or false
 
   Languages.initialize(_99_state)
+  Extensions.init(_99_state)
 end
 
 --- @param md string

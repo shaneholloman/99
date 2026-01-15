@@ -3,8 +3,8 @@ local M = {}
 --- @param dir string
 --- @return _99.Agents.Rule[]
 function M.ls(dir)
-  local cursor_rules_dir = vim.uv.cwd() .. dir
-  local files = vim.fn.glob(cursor_rules_dir .. "/*.{mdc,md}", false, true)
+  local cwd = vim.fs.joinpath(vim.uv.cwd(), dir)
+  local files = vim.fn.glob(cwd .. "/*.{mdc,md}", false, true)
   local rules = {}
 
   for _, file in ipairs(files) do
