@@ -5,6 +5,7 @@ local M = {}
 --- @class _99.Agents.Rule
 --- @field name string
 --- @field path string
+--- @field absolute_path string?
 
 --- @class _99.Agents.Rules
 --- @field custom _99.Agents.Rule[]
@@ -24,8 +25,8 @@ local function add_rule_by_name(map, rules)
   end
 end
 
----@param _99 _99.State
----@return _99.Agents.Rules
+--- @param _99 _99.State
+--- @return _99.Agents.Rules
 function M.rules(_99)
   local custom = {}
   for _, path in ipairs(_99.completion.custom_rules or {}) do
@@ -54,8 +55,8 @@ function M.rules_to_items(rules)
 end
 
 --- @param rules _99.Agents.Rules
----@param path string
----@return _99.Agents.Rule | nil
+--- @param path string
+--- @return _99.Agents.Rule | nil
 function M.get_rule_by_path(rules, path)
   for _, rule in ipairs(rules.custom or {}) do
     if rule.path == path then
@@ -66,11 +67,11 @@ function M.get_rule_by_path(rules, path)
 end
 
 --- @param rules _99.Agents.Rules
----@param token string
----@return boolean
+--- @param token string
+--- @return boolean
 function M.is_rule(rules, token)
   for _, rule in ipairs(rules.custom or {}) do
-    if rule.path == token then
+    if rule.path == token or rule.name == token then
       return true
     end
   end
@@ -95,9 +96,9 @@ function M.find_rules(rules, haystack)
   return out
 end
 
----@param rules _99.Agents.Rules
----@param prompt string
----@return {names: string[], rules: _99.Agents.Rules[]}
+--- @param rules _99.Agents.Rules
+--- @param prompt string
+--- @return {names: string[], rules: _99.Agents.Rules[]}
 function M.by_name(rules, prompt)
   --- @type table<string, boolean>
   local found = {}
@@ -124,6 +125,48 @@ function M.by_name(rules, prompt)
   return {
     names = names,
     rules = out_rules,
+  }
+end
+
+--- @param _99 _99.State
+--- @return _99.CompletionProvider
+function M.completion_provider(_99)
+  return {
+    trigger = "#",
+    name = "rules",
+    get_items = function()
+      local agent_rules = M.rules_to_items(_99.rules)
+      local items = {}
+      for _, rule in ipairs(agent_rules) do
+        local docs = helpers.head(rule.absolute_path or rule.path)
+        table.insert(items, {
+          label = rule.name,
+          insertText = "#" .. rule.path,
+          filterText = "#" .. rule.name,
+          kind = 12, -- LSP CompletionItemKind.Value
+          documentation = { kind = "markdown", value = docs },
+          detail = "Rule: " .. rule.path,
+        })
+      end
+      return items
+    end,
+    is_valid = function(token)
+      return M.is_rule(_99.rules, token)
+    end,
+    resolve = function(token)
+      local rule = M.get_rule_by_path(_99.rules, token)
+      if not rule then
+        return nil
+      end
+      local file_path = rule.absolute_path or rule.path
+      local ok, file = pcall(io.open, file_path, "r")
+      if not ok or not file then
+        return nil
+      end
+      local content = file:read("*a")
+      file:close()
+      return string.format("<%s>\n%s\n</%s>", rule.name, content, rule.name)
+    end,
   }
 end
 
