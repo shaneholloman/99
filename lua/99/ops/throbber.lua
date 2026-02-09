@@ -1,5 +1,5 @@
 local time = require("99.time")
-local throb_text = {
+local throb_icons = {
   { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" },
   { "◐", "◓", "◑", "◒" },
   { "⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷" },
@@ -16,7 +16,7 @@ local function create_throbber(ease_fn)
   ease_fn = ease_fn or function(p)
     return p
   end
-  local icon_set = throb_text[math.random(#throb_text)]
+  local icon_set = throb_icons[math.random(#throb_icons)]
   return function(percent)
     local eased = ease_fn(percent)
     local index = math.floor(eased * #icon_set) + 1
@@ -89,6 +89,6 @@ function Throbber:stop()
   self.state = "stopped"
 end
 
-Throbber._icons = throb_text
+Throbber._icons = throb_icons
 
 return Throbber
