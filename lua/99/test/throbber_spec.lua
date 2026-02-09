@@ -12,6 +12,12 @@ describe("Throbber", function()
       local original_icons = Throbber._icons
       Throbber._icons = { test_icons }
 
+      -- Define timings for predictable testing
+      local timings = {
+        throb_time = 600,
+        cooldown_time = 200,
+      }
+
       local received = {}
       local states = {}
       --- @type _99.Throbber
@@ -19,7 +25,7 @@ describe("Throbber", function()
       throbber = Throbber.new(function(icon)
         table.insert(received, icon)
         table.insert(states, throbber.state)
-      end)
+      end, timings)
       throbber.throb_fn = function(percent)
         local index = math.floor(percent * #test_icons) + 1
         return test_icons[math.min(index, #test_icons)]
@@ -27,7 +33,7 @@ describe("Throbber", function()
 
       -- Start throbbing
       throbber:start()
-      vim.wait(800)
+      vim.wait(timings.throb_time * 0.7)
 
       -- Verify we cycled through multiple icons (throb phase)
       local seen_icons = {}
@@ -41,9 +47,9 @@ describe("Throbber", function()
 
       -- Wait for cooldown (should stay on first icon)
       local icon_count_before_cooldown = #received
-      vim.wait(600)
+      vim.wait(timings.cooldown_time + timings.throb_time * 0.3)
 
-      -- Verify cooldown: stays on first icon
+      -- Verify cooldown: stays on last icon
       local cooldown_icons = {}
       for i = icon_count_before_cooldown + 1, #received do
         table.insert(cooldown_icons, received[i])
@@ -53,7 +59,7 @@ describe("Throbber", function()
       end
 
       -- Wait for second throb cycle to start
-      vim.wait(600)
+      vim.wait(timings.throb_time * 0.5)
 
       -- Verify we transitioned back to throbbing state
       local seen_throbbing = false

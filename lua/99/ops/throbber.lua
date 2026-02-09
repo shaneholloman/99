@@ -24,6 +24,28 @@ local function create_throbber(ease_fn)
   end
 end
 
+--- @param percent number
+--- @return number
+--- @diagnostic disable-next-line
+local function linear(percent)
+  return percent
+end
+
+--- @param percent number
+--- @return number
+--- @diagnostic disable-next-line
+local function ease_in_ease_out_quadratic(percent)
+  if percent < 0.5 then
+    return 2 * percent * percent
+  else
+    local f = percent - 1
+    return 1 - 2 * f * f
+  end
+end
+
+--- @param percent number
+--- @return number
+--- @diagnostic disable-next-line
 local function ease_in_ease_out_cubic(percent)
   if percent < 0.5 then
     return 4 * percent * percent * percent
@@ -33,27 +55,40 @@ local function ease_in_ease_out_cubic(percent)
   end
 end
 
-local throb_time = 1000
-local cooldown_time = 500
+local throb_time = 1200
+local cooldown_time = 100
+local tick_time = 100
 
 --- @class _99.Throbber
 --- @field start_time number
 --- @field section_time number
 --- @field state "init" | "throbbing" | "cooldown" | "stopped"
 --- @field throb_fn _99.Throbber.ThrobFN
+--- @field opts _99.Throbber.Opts
 --- @field cb fun(str: string): nil
 local Throbber = {}
 Throbber.__index = Throbber
 
+--- @class _99.Throbber.Opts
+--- @field throb_time number
+--- @field cooldown_time number
+
 --- @param cb fun(str: string): nil
+--- @param opts _99.Throbber.Opts?
 --- @return _99.Throbber
-function Throbber.new(cb)
+function Throbber.new(cb, opts)
+  opts = opts
+    or {
+      throb_time = throb_time,
+      cooldown_time = cooldown_time,
+    }
   return setmetatable({
     state = "init",
     start_time = 0,
     section_time = 0,
+    opts = opts,
     cb = cb,
-    throb_fn = create_throbber(ease_in_ease_out_cubic),
+    throb_fn = create_throbber(linear),
   }, Throbber)
 end
 
@@ -69,18 +104,19 @@ function Throbber:_run()
   if percent == 1 then
     self.state = self.state == "cooldown" and "throbbing" or "cooldown"
     self.start_time = time.now()
-    self.section_time = self.state == "cooldown" and cooldown_time or throb_time
+    self.section_time = self.state == "cooldown" and self.opts.cooldown_time
+      or self.opts.throb_time
   end
 
   self.cb(icon)
   vim.defer_fn(function()
     self:_run()
-  end, 75)
+  end, tick_time)
 end
 
 function Throbber:start()
   self.start_time = time.now()
-  self.section_time = throb_time
+  self.section_time = self.opts.throb_time
   self.state = "throbbing"
   self:_run()
 end
