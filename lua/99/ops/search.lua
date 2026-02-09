@@ -1,6 +1,6 @@
 local Request = require("99.request")
 local make_clean_up = require("99.ops.clean-up")
-local Agents = require("99.extensions.agents")
+local Completions = require("99.extensions.completions")
 local Mark = require("99.ops.marks")
 local Point = require("99.geo").Point
 
@@ -82,8 +82,8 @@ local function search(context, opts)
 
   local full_prompt = context._99.prompts.prompts.semantic_search()
   full_prompt = context._99.prompts.prompts.prompt(user_prompt, full_prompt)
-  local rules = Agents.find_rules(context._99.rules, user_prompt)
-  context:add_agent_rules(rules)
+  local refs = Completions.parse(user_prompt)
+  context:add_references(refs)
 
   local additional_rules = opts.additional_rules
   if additional_rules then
