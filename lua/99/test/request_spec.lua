@@ -17,6 +17,7 @@ describe("request test", function()
     local RequestContext = require("99.request-context")
 
     local context = RequestContext.from_current_buffer(state, 100)
+    context.operation = "test_request"
     context:finalize()
 
     local request = Request.new(context)
@@ -28,6 +29,9 @@ describe("request test", function()
 
     eq(0, state:active_request_count())
     request:start({
+      on_start = function()
+        print("on_start")
+      end,
       on_complete = function(status, _)
         finished_called = true
         finished_status = status
@@ -35,6 +39,7 @@ describe("request test", function()
       on_stdout = function() end,
       on_stderr = function() end,
     })
+    test_utils.next_frame()
     eq(1, state:active_request_count())
 
     eq("requesting", request.state)
