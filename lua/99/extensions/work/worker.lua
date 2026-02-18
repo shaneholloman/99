@@ -36,8 +36,8 @@ function M.craft_prompt(worker)
   return string.format(
     [[
 <YourGoal>
-You are to take the current git diff and git diff --staged and figure out what is left to change to complete the work item.
-The work item is described in <Description>
+You are to take the current git diff and git diff --staged and figure out what is
+left to change to complete the work item. The work item is described in <Description>
 
 Carefully review everything in git diff and git diff --staged and <Description> before you respond.
 respond with proper Search Format described in <Rule> and an example in <Output>
