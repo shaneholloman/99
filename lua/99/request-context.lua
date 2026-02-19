@@ -37,12 +37,17 @@ function RequestContext.from_current_buffer(_99, xid)
     table.insert(mds, md)
   end
 
+  local tmp_dir = _99.tmp_dir
+  if tmp_dir then
+    tmp_dir = vim.fn.expand(tmp_dir)
+  end
+
   return setmetatable({
     _99 = _99,
     clean_ups = {},
     md_file_names = mds,
     ai_context = {},
-    tmp_file = random_file(),
+    tmp_file = random_file(tmp_dir),
     buffer = buffer,
     full_path = full_path,
     file_type = file_type,
@@ -120,7 +125,7 @@ function RequestContext:_ready_request_files()
   local dir = vim.fs.dirname(prompt_file)
 
   if dir and not vim.uv.fs_stat(dir) then
-    pcall(vim.uv.fs_mkdir, dir, 493)
+    vim.fn.mkdir(dir, "p")
   end
 
   local files = { prompt_file, response_file }
