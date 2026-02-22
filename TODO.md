@@ -27,3 +27,5 @@
  * asserts if you included a type
  * initialized with the proper type
  * adds the fields one at a time
+* worktrees: I feel that i could turn a lot of this into a work tree way
+ * this would effectively make it so that running a bunch of parallel requests and changes do not have to become completely ruined, but instead we have everything mergeable and resolveable.  I think that this could "be the future" of this plugin

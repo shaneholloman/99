@@ -4,8 +4,7 @@ local ops = require("99.ops")
 local Languages = require("99.language")
 local Window = require("99.window")
 local Prompt = require("99.prompt")
-local geo = require("99.geo")
-local Range = geo.Range
+local State = require("99.state")
 local Extensions = require("99.extensions")
 local Agents = require("99.extensions.agents")
 local Providers = require("99.providers")
@@ -38,38 +37,6 @@ local function process_opts(opts)
   return opts
 end
 
---- @class _99.StateProps
---- @field model string
---- @field md_files string[]
---- @field prompts _99.Prompts
---- @field ai_stdout_rows number
---- @field show_in_flight_requests boolean
---- @field languages string[]
---- @field display_errors boolean
---- @field auto_add_skills boolean
---- @field provider_override _99.Providers.BaseProvider?
---- @field __view_log_idx number
---- @field __tmp_dir string | nil
-
---- @return _99.StateProps
-local function create_99_state()
-  return {
-    model = "opencode/claude-sonnet-4-5",
-    md_files = {},
-    prompts = require("99.prompt-settings"),
-    ai_stdout_rows = 3,
-    show_in_flight_requests = false,
-    languages = { "lua", "go", "java", "elixir", "cpp", "ruby" },
-    display_errors = false,
-    provider_override = nil,
-    auto_add_skills = false,
-    __view_log_idx = 1,
-    __request_history = {},
-    __request_by_id = {},
-    tmp_dir = nil,
-  }
-end
-
 --- @class _99.Completion
 --- @field source "cmp" | "blink" | nil
 --- @field custom_rules string[]
@@ -87,126 +54,8 @@ end
 --- @field completion _99.Completion?
 --- @field tmp_dir? string
 
---- unanswered question -- will i need to queue messages one at a time or
---- just send them all...  So to prepare ill be sending around this state object
---- @class _99.State
---- @field completion _99.Completion
---- @field model string
---- @field md_files string[]
---- @field prompts _99.Prompts
---- @field ai_stdout_rows number
---- @field languages string[]
---- @field display_errors boolean
---- @field show_in_flight_requests boolean
---- @field show_in_flight_requests_window _99.window.Window | nil
---- @field show_in_flight_requests_throbber _99.Throbber | nil
---- @field provider_override _99.Providers.BaseProvider?
---- @field auto_add_skills boolean
---- @field rules _99.Agents.Rules
---- @field __view_log_idx number
---- @field __request_history _99.Prompt[]
---- @field __request_by_id table<number, _99.Prompt>
---- @field __active_marks _99.Mark[]
---- @field __tmp_dir string | nil
-local _99_State = {}
-_99_State.__index = _99_State
-
---- @return _99.State
-function _99_State.new()
-  local props = create_99_state()
-  ---@diagnostic disable-next-line: return-type-mismatch
-  return setmetatable(props, _99_State)
-end
-
---- @return string
-function _99_State:tmp_dir()
-  local tmp_dir = self.__tmp_dir or "./tmp"
-  if tmp_dir then
-    tmp_dir = vim.fn.expand(tmp_dir)
-  end
-  return tmp_dir
-end
-
---- TODO: This is something to understand.  I bet that this is going to need
---- a lot of performance tuning.  I am just reading every file, and this could
---- take a decent amount of time if there are lots of rules.
----
---- Simple perfs:
---- 1. read 4096 bytes at a tiem instead of whole file and parse out lines
---- 2. don't show the docs
---- 3. do the operation once at setup instead of every time.
----    likely not needed to do this all the time.
-function _99_State:refresh_rules()
-  self.rules = Agents.rules(self)
-  Extensions.refresh(self)
-end
-
---- @param tutorial _99.Prompt.Data.Tutorial
-function _99_State:open_tutorial(tutorial)
-  -- TODO: this is a task item for when i start the work item "Tutorial Navigation"
-  _ = self
-  _ = tutorial
-end
-
---- @param context _99.Prompt
-function _99_State:track_request(context)
-  assert(context:valid(), "context is not valid")
-  table.insert(self.__request_history, context)
-  self.__request_by_id[context.xid] = context
-end
-
---- @return number
-function _99_State:previous_request_count()
-  local count = 0
-  for _, entry in ipairs(self.__request_history) do
-    if entry.state ~= "requesting" then
-      count = count + 1
-    end
-  end
-  return count
-end
-
-function _99_State:clear_previous_requests()
-  local keep = {}
-  for _, entry in ipairs(self.__request_history) do
-    if entry.state == "requesting" then
-      table.insert(keep, entry)
-    else
-      self.__request_by_id[entry.xid] = nil
-    end
-  end
-  self.__request_history = keep
-end
-
---- @param mark _99.Mark
-function _99_State:add_mark(mark)
-  table.insert(self.__active_marks, mark)
-end
-
-function _99_State:active_request_count()
-  local count = 0
-  for _, r in pairs(self.__request_history) do
-    if r.state == "requesting" then
-      count = count + 1
-    end
-  end
-  return count
-end
-
---- @param type "search" | "visual" | "tutorial"
---- @return _99.Prompt.Data
-function _99_State:get_request_data_by_type(type)
-  local out = {}
-  for _, r in ipairs(self.__request_history) do
-    local data = r.data
-    if data and data.type == type then
-      table.insert(out, data)
-    end
-  end
-  return out
-end
-
-local _99_state = _99_State.new()
+--- @type _99.State
+local _99_state
 
 --- @class _99
 local _99 = {
@@ -259,7 +108,7 @@ function _99.info()
   _99_state:refresh_rules()
   table.insert(
     info,
-    string.format("Previous Requests: %d", _99_state:previous_request_count())
+    string.format("Previous Requests: %d", _99_state:completed_prompts())
   )
   table.insert(
     info,
@@ -424,7 +273,7 @@ function _99.qfix_search_results(xid)
 end
 
 function _99.clear_previous_requests()
-  _99_state:clear_previous_requests()
+  _99_state:clear_history()
 end
 
 --- if you touch this function you will be fired
@@ -495,22 +344,12 @@ end
 function _99.setup(opts)
   opts = opts or {}
 
-  _99_state = _99_State.new()
-  _99_state.show_in_flight_requests = opts.show_in_flight_requests or false
-  _99_state.provider_override = opts.provider
-  _99_state.completion = opts.completion
-    or {
-      source = nil,
-      custom_rules = {},
-    }
-  _99_state.completion.custom_rules = _99_state.completion.custom_rules or {}
-  _99_state.auto_add_skills = opts.auto_add_skills or false
-  _99_state.completion.files = _99_state.completion.files or {}
+  _99_state = State.new(opts)
 
   local crules = _99_state.completion.custom_rules
   for i, rule in ipairs(crules) do
     local str = expand(rule)
-    assert(type(str) == "string", "rule path must be a string")
+    assert(type(str) == "string", "error parsing rule: path must be a string")
     crules[i] = str
   end
 
