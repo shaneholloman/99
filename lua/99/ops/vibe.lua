@@ -1,8 +1,27 @@
 local make_prompt = require("99.ops.make-prompt")
 local CleanUp = require("99.ops.clean-up")
+local QFixHelpers = require("99.ops.qfix-helpers")
 
 local make_clean_up = CleanUp.make_clean_up
 local make_observer = CleanUp.make_observer
+
+--- @param context _99.Prompt
+--- @param response string
+local function finish_vibe(context, response)
+  local qf_list = QFixHelpers.create_qfix_entries(response)
+  context.logger:set_area("vibe"):debug("qf_list created", "qf_list", qf_list)
+  context.data = {
+    type = "vibe",
+    qfix_items = qf_list,
+    response = response,
+  }
+
+  if #qf_list > 0 then
+    require("99").qfix(context.xid)
+  else
+    vim.notify("No search results found", vim.log.levels.INFO)
+  end
+end
 
 --- @class _99.Search.Result
 --- @field filename string
@@ -45,9 +64,7 @@ local function vibe(context, opts)
         response or "no response provided"
       )
     elseif status == "success" then
-      -- create_search_locations(context, response)
-      -- need to parse out everything so i we can qfix list
-      print("done", response)
+      finish_vibe(context, response)
     end
   end))
 end
